@@ -1,24 +1,26 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyAJ3EwNw_WXwmuB5PgEj6JCh8JxXWvBkoE",
-  authDomain: "icupa-396da.firebaseapp.com",
-  projectId: "icupa-396da",
-  storageBucket: "icupa-396da.appspot.com",
-  messagingSenderId: "49459051581",
-  appId: "1:49459051581:web:86da4bea01e16cd4107e54",
-  measurementId: "G-D80RPNQVCZ",
-};
+import admin from 'firebase-admin';
+import { readFileSync } from 'fs';
+import path from 'path';
 
-module.exports = firebaseConfig;
+// Path to the service account key stored in Render secrets
+const serviceAccountPath = '/etc/secrets/serviceAccountKey.json';
+
+// Read and parse the service account JSON file
+const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
 
 
+if (!admin.apps.length) {
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: "https://icupa-396da.firebaseio.com"
+        });
+        console.log('Firebase Admin successfully initialized!!!!!!!!!!!!!!!!!');
+    } catch (error) {
+        console.error('Firebase Admin initialization error:', error);
+    }
+}
 
-// export const firebaseConfig = {
-//     apiKey: "AIzaSyAJ3EwNw_WXwmuB5PgEj6JCh8JxXWvBkoE",
-//     authDomain: "icupa-396da.firebaseapp.com",
-//     projectId: "icupa-396da",
-//     storageBucket: "icupa-396da.appspot.com",
-//     messagingSenderId: "49459051581",
-//     appId: "1:49459051581:web:86da4bea01e16cd4107e54",
-//     measurementId: "G-D80RPNQVCZ",
-//   };
-  
+
+// Export the Firestore instance
+export const firestore = admin.firestore();
