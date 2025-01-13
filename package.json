@@ -16,6 +16,9 @@
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "firebase": "^11.0.2"
+    "firebase-admin": "^11.0.0",
+    "http": "*",
+    "https": "*"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
