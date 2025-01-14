@@ -995,7 +995,7 @@ async function sendWhatsAppMessage(phone, messagePayload, phoneNumberId) {
 
 
 // new catalog with sections
-async function sendDefaultCatalog(phone, 553852214469319) {
+async function sendDefaultCatalog(phone, phoneNumberId) {
   try {
     const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
 
@@ -1076,7 +1076,7 @@ async function sendDefaultCatalog(phone, 553852214469319) {
   }
 }
 
-async function sendDefaultCatalog2(phone, 396791596844039) {
+async function sendDefaultCatalog2(phone, phoneNumberId) {
   try {
     const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
 
