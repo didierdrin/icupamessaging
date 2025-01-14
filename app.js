@@ -452,6 +452,39 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
   }
 };
 
+const handleTextMessages2 = async (message, phone, phoneNumberId) => {
+  const messageText = message.text.body.trim().toLowerCase();
+
+  switch (messageText) {
+    case "adminclear":
+      userContexts.clear();
+      console.log("All user contexts reset.");
+      break;
+
+    case "clear":
+      userContexts.delete(phone);
+      console.log("User context reset.");
+      break;
+
+    case "menu":
+      console.log("User requested the menu.");
+      await sendDefaultCatalog(phone, phoneNumberId);
+      break;
+    case "icupa":
+      console.log("User requested the menu.");
+      await sendDefaultCatalog2(phone, phoneNumberId);
+      break;
+
+    case "insurance":
+      console.log("User requested insurance options.");
+      await sendWelcomeMessage(phone, phoneNumberId);
+      break;
+
+    default:
+      console.log(`Received unrecognized message: ${messageText}`);
+  }
+};
+
 const handleInteractiveMessages = async (message, phone, phoneNumberId) => {
   const interactiveType = message.interactive.type;
   const replyId =
@@ -817,7 +850,7 @@ app.post("/webhook", async (req, res) => {
                 break;
   
               case "text":
-                await handleTextMessages(message, phone, phoneNumberId);
+                await handleTextMessages2(message, phone, phoneNumberId);
                 await handlePlateNumberValidation(message, phone, phoneNumberId);
                 await handleDateValidation(message, phone, phoneNumberId);
                 await handleNumberOfPeople(message, phone, phoneNumberId);
