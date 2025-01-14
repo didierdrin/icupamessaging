@@ -669,29 +669,29 @@ app.post("/webhook", async (req, res) => {
             return res.status(400).send("Invalid payload.");
         }
 
-        for (const message of messages) {
-            const phone = message.from;
-            const uniqueMessageId = `${phoneNumberId}-${message.id}`;
+        // Only process the first message in the array
+        const message = messages[0];
+        const phone = message.from;
+        const uniqueMessageId = `${phoneNumberId}-${message.id}`;
 
-            if (processedMessages.has(uniqueMessageId)) {
-                console.log("Duplicate message ignored:", uniqueMessageId);
-                continue;
-            }
+        if (processedMessages.has(uniqueMessageId)) {
+            console.log("Duplicate message ignored:", uniqueMessageId);
+            return res.sendStatus(200);
+        }
 
-            processedMessages.add(uniqueMessageId);
-            try {
-                if (phoneNumberId === "396791596844039") {
-                    await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
-                } else if (phoneNumberId === "553852214469319") {
-                    await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
-                } else {
-                    console.warn("Unknown phone number ID:", phoneNumberId);
-                }
-            } catch (err) {
-                console.error("Error processing message:", err.message);
-            } finally {
-                setTimeout(() => processedMessages.delete(uniqueMessageId), 300000);
+        processedMessages.add(uniqueMessageId);
+        try {
+            if (phoneNumberId === "396791596844039") {
+                await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
+            } else if (phoneNumberId === "553852214469319") {
+                await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
+            } else {
+                console.warn("Unknown phone number ID:", phoneNumberId);
             }
+        } catch (err) {
+            console.error("Error processing message:", err.message);
+        } finally {
+            setTimeout(() => processedMessages.delete(uniqueMessageId), 300000);
         }
     }
 
