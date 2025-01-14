@@ -347,7 +347,7 @@ const handleNumberOfPeople = async (message, phone, phoneNumberId) => {
         userContext.numberOfCoveredPeople = numberOfPeople;
         userContexts.set(phone, userContext);
 
-        await selectPaymentPlan(phone);
+        await selectPaymentPlan(phone, phoneNumberId);
       } catch (error) {
         console.error("Processing error:", error);
         await sendWhatsAppMessage(phone, {
