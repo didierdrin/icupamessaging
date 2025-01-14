@@ -660,40 +660,43 @@ app.post("/webhook", async (req, res) => {
 
   if (req.body.object === "whatsapp_business_account") {
     const changes = req.body.entry?.[0]?.changes?.[0];
-    const messages = changes.value?.messages;
+    const messages = changes?.value?.messages;
 
     if (!changes || !messages || messages.length === 0) {
       return res.status(400).send("Invalid payload or no messages.");
     }
 
     const phoneNumberId = changes.value?.metadata?.phone_number_id;
+    
+    // Early return if phoneNumberId is not recognized
+    if (!["396791596844039", "553852214469319"].includes(phoneNumberId)) {
+      console.log("Unknown phone number ID:", phoneNumberId);
+      return res.sendStatus(200);
+    }
 
     for (const message of messages) {
       const phone = message.from;
       const messageId = message.id;
 
-      // Deduplication: Check processedMessages for duplicates
+      // Deduplication check
       if (processedMessages.has(messageId)) {
         console.log("Duplicate message ignored:", messageId);
         continue;
       }
 
-      // Add to processedMessages and remove after processing
       processedMessages.add(messageId);
 
       try {
+        // Exclusive handling based on phoneNumberId
         if (phoneNumberId === "396791596844039") {
           await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
         } else if (phoneNumberId === "553852214469319") {
           await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
-        } else {
-          console.log("Unknown phone number ID:", phoneNumberId);
         }
       } catch (err) {
-        console.error("Error processing message:", err.message);
+        console.error(`Error processing message for phone ID ${phoneNumberId}:`, err.message);
       } finally {
-        // Optional: Cleanup processedMessages after timeout or processing
-        setTimeout(() => processedMessages.delete(messageId), 300000); // Retain for 5 minutes
+        setTimeout(() => processedMessages.delete(messageId), 300000);
       }
     }
   }
@@ -701,218 +704,102 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
-
-
-async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
+// Separate message handling function
+async function handleMessage(message, phone, changes, phoneNumberId) {
   switch (message.type) {
-            case "order":
-              await handleOrder(
-                message,
-                changes,
-                changes.value.metadata.display_phone_number,
-                phoneNumberId
-              );
-              break;
+    case "order":
+      await handleOrder(message, changes, changes.value.metadata.display_phone_number, phoneNumberId);
+      break;
 
-            case "text":
-              await handleTextMessages(message, phone, phoneNumberId);
-              await handlePlateNumberValidation(message, phone, phoneNumberId);
-              await handleDateValidation(message, phone, phoneNumberId);
-              await handleNumberOfPeople(message, phone, phoneNumberId);
-              const userContext = userContexts.get(phone) || {};
-              if (userContext.stage === "EXPECTING_TIN") {
-                const tin = message.text.body.trim();
-                if (tin) {
-                  console.log(`User ${phone} provided TIN: ${tin}`);
-                  // Store the TIN or process it as required
-                  // Update the context to expect the location
-                  //userContext.tin = tin;  // Save the TIN
-                  userContext.stage = "EXPECTING_MTN_AIRTEL"; // Move to location stage
-                  userContexts.set(phone, userContext);
+    case "text":
+      await handleTextMessages(message, phone, phoneNumberId);
+      await handlePlateNumberValidation(message, phone, phoneNumberId);
+      await handleDateValidation(message, phone, phoneNumberId);
+      await handleNumberOfPeople(message, phone, phoneNumberId);
+      
+      const userContext = userContexts.get(phone) || {};
+      if (userContext.stage === "EXPECTING_TIN") {
+        await handleTINInput(message, phone, userContext, phoneNumberId);
+      }
+      break;
 
-                  await sendWhatsAppMessage(phone, {
-                    type: "interactive",
-                    interactive: {
-                      type: "button",
-                      body: {
-                        text: "Proceed to payment",
-                      },
-                      action: {
-                        buttons: [
-                          { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
-                          {
-                            type: "reply",
-                            reply: { id: "airtel_mobile_money", title: "Airtel Money" },
-                          },
-                        ],
-                      },
-                    },
-                  }, phoneNumberId);
+    case "interactive":
+      await handleInteractiveMessage(message, phone, phoneNumberId);
+      break;
 
-                  return;  // Exit early after processing TIN
-                } else {
-                  await sendWhatsAppMessage(phone, {
-                    type: "text",
-                    text: {
-                      body: "Invalid TIN. Please provide a valid TIN.",
-                    },
-                  }, phoneNumberId);
-                  return;
-                }
-              }
-              break;
+    case "document":
+    case "image":
+      await handleDocumentUpload(message, phone, phoneNumberId);
+      break;
 
-            case "interactive":
-              if (message.interactive.type === "nfm_reply") {
-                await handleNFMReply(message, phone, phoneNumberId);
-              } else if (message.interactive.type === "button_reply") {
-                const buttonId = message.interactive.button_reply.id;
+    case "location":
+      await handleLocation(message.location, phone, phoneNumberId);
+      break;
 
-                // Only process if MENU pay
-                const userContext = userContexts.get(phone) || {};
-                if (
-                  userContext.stage === "EXPECTING_CONFIRM_PAY" ||
-                  userContext.stage === "PERSONAL_ACCIDENT_COVER" ||
-                  userContext.stage === "EXPECTING_INSURANCE_PERIOD"
-                ) {
-                  await handlePaymentTermsReply(
-                    buttonId,
-                    phone,
-                    userContexts.get(phone), phoneNumberId
-                  );
-                  console.log("Expecting AGREE & PAY button reply");
-                  return;
-                }
-                if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
-                  await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
-                  console.log("Expecting MTN & AIRTEL button reply");
-                  return;
-                }
-              } else {
-                await handleInteractiveMessages(message, phone, phoneNumberId);
-              }
-              break;
-            case "document":
-            case "image":
-              await handleDocumentUpload(message, phone, phoneNumberId);
-              break;
-
-            case "location":
-              await handleLocation(message.location, phone, phoneNumberId);
-              break;
-
-            default:
-              console.log("Unrecognized message type:", message.type);
-          }
+    default:
+      console.log("Unrecognized message type:", message.type);
+  }
 }
 
-
+// Update the handler functions to use the shared message handling logic
+async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
+  await handleMessage(message, phone, changes, phoneNumberId);
+}
 
 async function handlePhoneNumber2Logic(message, phone, changes, phoneNumberId) {
-  switch (message.type) {
-            case "order":
-              await handleOrder(
-                message,
-                changes,
-                changes.value.metadata.display_phone_number,
-                phoneNumberId
-              );
-              break;
-
-            case "text":
-              await handleTextMessages(message, phone, phoneNumberId);
-              await handlePlateNumberValidation(message, phone, phoneNumberId);
-              await handleDateValidation(message, phone, phoneNumberId);
-              await handleNumberOfPeople(message, phone, phoneNumberId);
-              const userContext = userContexts.get(phone) || {};
-              if (userContext.stage === "EXPECTING_TIN") {
-                const tin = message.text.body.trim();
-                if (tin) {
-                  console.log(`User ${phone} provided TIN: ${tin}`);
-                  // Store the TIN or process it as required
-                  // Update the context to expect the location
-                  //userContext.tin = tin;  // Save the TIN
-                  userContext.stage = "EXPECTING_MTN_AIRTEL"; // Move to location stage
-                  userContexts.set(phone, userContext);
-
-                  await sendWhatsAppMessage(phone, {
-                    type: "interactive",
-                    interactive: {
-                      type: "button",
-                      body: {
-                        text: "Proceed to payment",
-                      },
-                      action: {
-                        buttons: [
-                          { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
-                          {
-                            type: "reply",
-                            reply: { id: "airtel_mobile_money", title: "Airtel Money" },
-                          },
-                        ],
-                      },
-                    },
-                  }, phoneNumberId);
-
-                  return;  // Exit early after processing TIN
-                } else {
-                  await sendWhatsAppMessage(phone, {
-                    type: "text",
-                    text: {
-                      body: "Invalid TIN. Please provide a valid TIN.",
-                    },
-                  }, phoneNumberId);
-                  return;
-                }
-              }
-              break;
-
-            case "interactive":
-              if (message.interactive.type === "nfm_reply") {
-                await handleNFMReply(message, phone, phoneNumberId);
-              } else if (message.interactive.type === "button_reply") {
-                const buttonId = message.interactive.button_reply.id;
-
-                // Only process if MENU pay
-                const userContext = userContexts.get(phone) || {};
-                if (
-                  userContext.stage === "EXPECTING_CONFIRM_PAY" ||
-                  userContext.stage === "PERSONAL_ACCIDENT_COVER" ||
-                  userContext.stage === "EXPECTING_INSURANCE_PERIOD"
-                ) {
-                  await handlePaymentTermsReply(
-                    buttonId,
-                    phone,
-                    userContexts.get(phone),
-                    phoneNumberId
-                  );
-                  console.log("Expecting AGREE & PAY button reply");
-                  return;
-                }
-                if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
-                  await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
-                  console.log("Expecting MTN & AIRTEL button reply");
-                  return;
-                }
-              } else {
-                await handleInteractiveMessages(message, phone, phoneNumberId);
-              }
-              break;
-            case "document":
-            case "image":
-              await handleDocumentUpload(message, phone, phoneNumberId);
-              break;
-
-            case "location":
-              await handleLocation(message.location, phone, phoneNumberId);
-              break;
-
-            default:
-              console.log("Unrecognized message type:", message.type);
-          }
+  await handleMessage(message, phone, changes, phoneNumberId);
 }
 
+// Helper function for TIN handling
+async function handleTINInput(message, phone, userContext, phoneNumberId) {
+  const tin = message.text.body.trim();
+  if (tin) {
+    console.log(`User ${phone} provided TIN: ${tin}`);
+    userContext.stage = "EXPECTING_MTN_AIRTEL";
+    userContexts.set(phone, userContext);
 
+    await sendWhatsAppMessage(phone, {
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: {
+          text: "Proceed to payment",
+        },
+        action: {
+          buttons: [
+            { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
+            { type: "reply", reply: { id: "airtel_mobile_money", title: "Airtel Money" } },
+          ],
+        },
+      },
+    }, phoneNumberId);
+  } else {
+    await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: {
+        body: "Invalid TIN. Please provide a valid TIN.",
+      },
+    }, phoneNumberId);
+  }
+}
+
+// Helper function for interactive message handling
+async function handleInteractiveMessage(message, phone, phoneNumberId) {
+  if (message.interactive.type === "nfm_reply") {
+    await handleNFMReply(message, phone, phoneNumberId);
+  } else if (message.interactive.type === "button_reply") {
+    const buttonId = message.interactive.button_reply.id;
+    const userContext = userContexts.get(phone) || {};
+
+    if (["EXPECTING_CONFIRM_PAY", "PERSONAL_ACCIDENT_COVER", "EXPECTING_INSURANCE_PERIOD"].includes(userContext.stage)) {
+      await handlePaymentTermsReply(buttonId, phone, userContext, phoneNumberId);
+    } else if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
+      await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
+    }
+  } else {
+    await handleInteractiveMessages(message, phone, phoneNumberId);
+  }
+}
 
 // Webhook verification
 app.get("/webhook", (req, res) => {
