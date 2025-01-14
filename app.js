@@ -87,7 +87,7 @@ const validateDate = (dateString) => {
 
 //// From here - readable modular functions.
 
-const handlePlateNumberValidation = async (message, phone) => {
+const handlePlateNumberValidation = async (message, phone, phoneNumberId) => {
   const userContext = userContexts.get(phone);
   const messageText = message.text.body.trim().toLowerCase();
   const PLATE_NUMBER_REGEX = /^[a-zA-Z]{3}\s?\d{3}[a-zA-Z]?$/i;
@@ -105,7 +105,7 @@ const handlePlateNumberValidation = async (message, phone) => {
     });
 
     if (isValid) {
-      await selectInsurancePeriod(phone, formattedPlateNumber);
+      await selectInsurancePeriod(phone, formattedPlateNumber, phoneNumberId);
     } else {
       // Send error message for invalid plate number
       const errorPayload = {
@@ -114,15 +114,15 @@ const handlePlateNumberValidation = async (message, phone) => {
           body: "Invalid plate number format. Please use a valid format like RAC345T or RAC 345 T:",
         },
       };
-      await sendWhatsAppMessage(phone, errorPayload);
+      await sendWhatsAppMessage(phone, errorPayload, phoneNumberId);
 
       // Optional: Re-trigger plate number request
-      await requestVehiclePlateNumber(phone);
+      await requestVehiclePlateNumber(phone, phoneNumberId);
     }
   }
 };
 
-const handleDateValidation = async (message, phone) => {
+const handleDateValidation = async (message, phone, phoneNumberId) => {
   const DATE_REGEX = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
   const messageText = message.text.body.trim();
 
@@ -153,7 +153,7 @@ const handleDateValidation = async (message, phone) => {
         userContexts.set(phone, userContext);
 
         // Proceed to next step: selecting insurance cover type
-        await selectInsuranceCoverType(phone);
+        await selectInsuranceCoverType(phone, phoneNumberId);
       } else {
         // Send error message for invalid date
         const errorPayload = {
@@ -162,7 +162,7 @@ const handleDateValidation = async (message, phone) => {
             body: "Invalid date. Please enter a valid future date in DD/MM/YYYY format. For example: 15/12/2024",
           },
         };
-        await sendWhatsAppMessage(phone, errorPayload);
+        await sendWhatsAppMessage(phone, errorPayload, phoneNumberId);
       }
     } catch (error) {
       console.error("Date validation error:", error);
@@ -172,13 +172,13 @@ const handleDateValidation = async (message, phone) => {
           body: "There was an error processing the date. Please try again with a valid date in DD/MM/YYYY format.",
         },
       };
-      await sendWhatsAppMessage(phone, errorPayload);
+      await sendWhatsAppMessage(phone, errorPayload, phoneNumberId);
     }
   }
 };
 
 // New comprehensive message handling functions
-const handleNFMReply = async (message, phone) => {
+const handleNFMReply = async (message, phone, phoneNumberId) => {
   const userContext = userContexts.get(phone) || {};
     
   try {
@@ -203,13 +203,13 @@ const handleNFMReply = async (message, phone) => {
     // Process specific cover type
     if (selectedCoverTypes.includes("0_Third-Party_Cover_")) {
       userContext.thirdPartyComesaCost = 14000;
-      await selectToAddPersonalAccidentCover(phone);
+      await selectToAddPersonalAccidentCover(phone, phoneNumberId);
     }
 
     // Process specific cover type
     if (selectedCoverTypes.includes("1_COMESA_Cover")) {
       userContext.thirdPartyComesaCost = 10000;
-      await selectToAddPersonalAccidentCover(phone);
+      await selectToAddPersonalAccidentCover(phone, phoneNumberId);
     }
 
     // Update user context
@@ -223,7 +223,7 @@ const handleNFMReply = async (message, phone) => {
   }
 };
 
-const handlePaymentTermsReply = async (replyId, phone, userContext) => {
+const handlePaymentTermsReply = async (replyId, phone, userContext, phoneNumberId) => {
   switch (replyId) {
     case "add_yes":
       if (userContext.stage === "PERSONAL_ACCIDENT_COVER") {
@@ -244,11 +244,11 @@ const handlePaymentTermsReply = async (replyId, phone, userContext) => {
       //userContext.numberOfCoveredPeople = 1;
       userContexts.set(phone, userContext);
 
-      await selectPaymentPlan(phone);
+      await selectPaymentPlan(phone, phoneNumberId);
       break;
     case "agree_to_terms":
       console.log("User agreed to the terms. Proceeding with payment.");
-      await processPayment(phone, userContext.selectedInstallment);
+      await processPayment(phone, userContext.selectedInstallment, phoneNumberId);
       break;
 
     case "cancel_payment":
@@ -258,7 +258,7 @@ const handlePaymentTermsReply = async (replyId, phone, userContext) => {
         text: {
           body: "Payment has been canceled. Let us know if you need anything else!",
         },
-      });
+      }, phoneNumberId);
       break;
     case "start_today":
       if (userContext.stage === "EXPECTING_INSURANCE_PERIOD") {
@@ -267,7 +267,7 @@ const handlePaymentTermsReply = async (replyId, phone, userContext) => {
         const formattedDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
         userContext.insuranceStartDate = formattedDate;
         userContexts.set(phone, userContext);
-        await selectInsuranceCoverType(phone);
+        await selectInsuranceCoverType(phone, phoneNumberId);
         console.log("Expecting start_today button reply");
         return;
       }
@@ -281,7 +281,7 @@ const handlePaymentTermsReply = async (replyId, phone, userContext) => {
           text: {
             body: "Please enter your desired start date (DD/MM/YYYY):",
           },
-        });
+        }, phoneNumberId);
         userContext.stage = "CUSTOM_DATE_INPUT";
         userContexts.set(phone, userContext);
         console.log("Expecting custom_date button reply");
@@ -295,7 +295,7 @@ const handlePaymentTermsReply = async (replyId, phone, userContext) => {
   }
 };
 
-const handleMobileMoneySelection = async (buttonId, phone) => {
+const handleMobileMoneySelection = async (buttonId, phone, phoneNumberId) => {
   let callToActionMessage = "";
 
   switch (buttonId) {
@@ -317,10 +317,10 @@ const handleMobileMoneySelection = async (buttonId, phone) => {
     text: { body: callToActionMessage },
   };
 
-  await sendWhatsAppMessage(phone, redirectPayload);
+  await sendWhatsAppMessage(phone, redirectPayload, phoneNumberId);
 };
 
-const handleNumberOfPeople = async (message, phone) => {
+const handleNumberOfPeople = async (message, phone, phoneNumberId) => {
   const userContext = userContexts.get(phone) || {};
 
   if (userContext.stage === "EXPECTING_NUMBER_OF_PEOPLE") {
@@ -355,7 +355,7 @@ const handleNumberOfPeople = async (message, phone) => {
           text: {
             body: "An error occurred. Please try again.",
           },
-        });
+        }, phoneNumberId);
       }
     } else {
       await sendWhatsAppMessage(phone, {
@@ -363,12 +363,12 @@ const handleNumberOfPeople = async (message, phone) => {
         text: {
           body: "Invalid input. Please enter a number between 1 and 1000. For example: 3",
         },
-      });
+      }, phoneNumberId);
     }
   }
 };
 
-const handleOrder = async (message, changes, displayPhoneNumber) => {
+const handleOrder = async (message, changes, displayPhoneNumber, phoneNumberId) => {
   const order = message.order;
   const orderId = message.id;
   const customerInfo = {
@@ -392,15 +392,7 @@ const handleOrder = async (message, changes, displayPhoneNumber) => {
   userContexts.set(customerInfo.phone, userContext);
 
   try {
-    // Optionally, save order to external API
-    //await axios.post(
-    //  `https://ikanisamessaging.onrender.com/api/save-order`,
-    //  {
-    //    orderId,
-    //    customerInfo,
-    //    items,
-    //  }
-    //);
+    
 
     // Send location request message
     const locationRequestPayload = {
@@ -416,7 +408,7 @@ const handleOrder = async (message, changes, displayPhoneNumber) => {
       },
     };
 
-    await sendWhatsAppMessage(customerInfo.phone, locationRequestPayload);
+    await sendWhatsAppMessage(customerInfo.phone, locationRequestPayload, phoneNumberId);
     console.log("Order saved successfully.");
   } catch (error) {
     console.error("Error saving order:", error.message);
@@ -424,50 +416,9 @@ const handleOrder = async (message, changes, displayPhoneNumber) => {
 };
 
 
-//const handleOrder = async (message, changes, displayPhoneNumber) => {
-//  const order = message.order;
-//  const orderId = message.id;
-//  const customerInfo = {
-//    phone: changes.value.contacts[0].wa_id,
-//    receiver: displayPhoneNumber,
-//  };
-//  const items = order.product_items;
-//  const totalAmount = items.reduce(
-//    (total, item) => total + item.item_price * item.quantity,
-//    0
-//  );
-//
-//  try {
-//    await axios.post(
-//      `https://ikanisamessaging.onrender.com/api/save-order`,
-//      {
-//        orderId,
-//        customerInfo,
-//        items,
-//     }
-//    );
 
-//    const locationRequestPayload = {
-//      type: "interactive",
-//      interactive: {
-//        type: "location_request_message",
-//        body: {
-//          text: "Share your delivery location",
-//        },
-//        action: {
-//          name: "send_location",
-//        },
-//      },
-//    };
 
-//    await sendWhatsAppMessage(customerInfo.phone, locationRequestPayload);
-//    console.log("Order saved successfully.");
-//  } catch (error) {
-//    console.error("Error saving order:", error.message);
-//  }
-//};
-
-const handleTextMessages = async (message, phone) => {
+const handleTextMessages = async (message, phone, phoneNumberId) => {
   const messageText = message.text.body.trim().toLowerCase();
 
   switch (messageText) {
@@ -483,12 +434,12 @@ const handleTextMessages = async (message, phone) => {
 
     case "menu":
       console.log("User requested the menu.");
-      await sendDefaultCatalog(phone);
+      await sendDefaultCatalog(phone, phoneNumberId);
       break;
 
     case "insurance":
       console.log("User requested insurance options.");
-      await sendWelcomeMessage(phone);
+      await sendWelcomeMessage(phone, phoneNumberId);
       break;
 
     default:
@@ -496,7 +447,7 @@ const handleTextMessages = async (message, phone) => {
   }
 };
 
-const handleInteractiveMessages = async (message, phone) => {
+const handleInteractiveMessages = async (message, phone, phoneNumberId) => {
   const interactiveType = message.interactive.type;
   const replyId =
     interactiveType === "list_reply"
@@ -507,77 +458,77 @@ const handleInteractiveMessages = async (message, phone) => {
 
   switch (replyId) {
     case "get_insurance":
-      await requestInsuranceDocument(phone);
+      await requestInsuranceDocument(phone, phoneNumberId);
       break;
 
     case "file_claim":
-      await initiateClaimProcess(phone);
+      await initiateClaimProcess(phone, phoneNumberId);
       break;
 
     case "cat_1":
       userContext.selectedCoverage = 1000000; // Price for CAT 1
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "cat_2":
       userContext.selectedCoverage = 2000000; // Price for CAT 2
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "cat_3":
       userContext.selectedCoverage = 3000000; // Price for CAT 3
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "cat_4":
       userContext.selectedCoverage = 4000000; // Price for CAT 4
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "cat_5":
       userContext.selectedCoverage = 5000000; // Price for CAT 5
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "risk_taker":
       userContext.selectedCoverage = 0; // No cost for no coverage
       userContexts.set(phone, userContext);
-      await numberOfCoveredPeople(phone);
+      await numberOfCoveredPeople(phone, phoneNumberId);
       break;
 
     case "installment_cat1":
       userContext.selectedInstallment = 'i_cat1';
       userContexts.set(phone, userContext); 
-      await confirmAndPay(phone, userContext.selectedInstallment); 
+      await confirmAndPay(phone, userContext.selectedInstallment, phoneNumberId); 
       break;
 
     case "installment_cat2":
       userContext.selectedInstallment = 'i_cat2';
       userContexts.set(phone, userContext); 
-      await confirmAndPay(phone, userContext.selectedInstallment); 
+      await confirmAndPay(phone, userContext.selectedInstallment, phoneNumberId); 
       break; 
 
     case "installment_cat3":
       userContext.selectedInstallment = 'i_cat3'; 
       userContexts.set(phone, userContext); 
-      await confirmAndPay(phone, userContext.selectedInstallment); 
+      await confirmAndPay(phone, userContext.selectedInstallment, phoneNumberId); 
       break;
 
     case "installment_cat4":
       userContext.selectedInstallment = 'i_cat4'; 
       userContexts.set(phone, userContext); 
-      await confirmAndPay(phone, userContext.selectedInstallment); 
+      await confirmAndPay(phone, userContext.selectedInstallment, phoneNumberId); 
       break; 
       
     case "full_payment":
       userContext.selectedInstallment = 'i_catf'; 
       userContexts.set(phone, userContext);
-      await confirmAndPay(phone, userContext.selectedInstallment);
+      await confirmAndPay(phone, userContext.selectedInstallment, phoneNumberId);
       break;
 
     default:
@@ -585,7 +536,7 @@ const handleInteractiveMessages = async (message, phone) => {
   }
 };
 
-const handleLocation = async (location, phone) => {
+const handleLocation = async (location, phone, phoneNumberId) => {
   try {
     // Retrieve the order from userContext
     const userContext = userContexts.get(phone);
@@ -597,7 +548,7 @@ const handleLocation = async (location, phone) => {
         text: {
           body: "No active order found. Please place an order first.",
         },
-      });
+      }, phoneNumberId);
       return;
     }
 
@@ -630,7 +581,7 @@ const handleLocation = async (location, phone) => {
       text: {
         body: "Please provide your TIN (e.g., 101589140):",
       },
-    });
+    }, phoneNumberId);
 
     // Update user context to expect TIN input
     userContext.stage = "EXPECTING_TIN";
@@ -644,69 +595,11 @@ const handleLocation = async (location, phone) => {
       text: {
         body: `Sorry, there was an error processing your location: ${error.message}. Please try again.`,
       },
-    });
+    }, phoneNumberId);
   }
 };
 
-//const handleLocation = async (location, phone) => {
-//  try {
-//    const ordersSnapshot = await firestore
-//      .collection("whatsappOrders")
-//      .where("user", "==", `+${phone}`)
-//      .where("paid", "==", false)
-//      .limit(1)
-//      .get();
-
-//    if (!ordersSnapshot.empty) {
-//      const orderDoc = ordersSnapshot.docs[0];
-//      const orderData = orderDoc.data();
-
-//      await orderDoc.ref.update({
-//        deliveryLocation: {
-//          latitude: location.latitude,
-//          longitude: location.longitude,
-//        },
-//      });
-
-//      const totalAmount = orderData.products.reduce(
-//        (total, product) => total + product.price * product.quantity,
-//        0
-//      );
-
-//      await sendWhatsAppMessage(phone, {
-//        type: "text",
-//    text: {
-//      body: "Please provide your TIN(e.g., 101589140)",
-//    },
-//      });
-
-      // Update user context to expect a document
- //     const userContext = userContexts.get(phone) || {};
- //     userContext.stage = "EXPECTING_TIN";
- //     userContexts.set(phone, userContext);
-
-//      console.log("Location saved and payment options sent.");
-//    } else {
-//      console.log("No unpaid order found for this user.");
-//      await sendWhatsAppMessage(phone, {
-//        type: "text",
-//        text: {
-//          body: "We couldn't find an active order. Please place an order first.",
-//        },
-//      });
-//    }
-//  } catch (error) {
- //   console.error("Error processing location and payment:", error);
- //   await sendWhatsAppMessage(phone, {
- //     type: "text",
- //     text: {
- //       body: `Sorry, there was an error processing your location: ${error.message}. Please try again.`,
- //     },
- //   });
- // }
-//};
-
-const handleDocumentUpload = async (message, phone) => {
+const handleDocumentUpload = async (message, phone, phoneNumberId) => {
   const userContext = userContexts.get(phone) || {};
 
   // Only process if expecting a document
@@ -728,15 +621,14 @@ const handleDocumentUpload = async (message, phone) => {
       text: {
         body: "Invalid file type. Please upload a clear image or PDF of your insurance certificate.",
       },
-    });
+    }, phoneNumberId);
     return;
   }
 
   try {
     console.log("Received a document:", mediaId);
 
-    // Optional: Save document logic can be added here
-    // await saveDocument(mediaId, mediaMimeType);
+    
 
 
     // Store the document ID (or URL if you download it) in the userContext
@@ -745,7 +637,7 @@ const handleDocumentUpload = async (message, phone) => {
     userContexts.set(phone, userContext);
 
     // Proceed to next step
-    await requestVehiclePlateNumber(phone);
+    await requestVehiclePlateNumber(phone, phoneNumberId);
   } catch (error) {
     console.error("Error processing document:", error);
     await sendWhatsAppMessage(phone, {
@@ -753,7 +645,7 @@ const handleDocumentUpload = async (message, phone) => {
       text: {
         body: "An error occurred while processing your document. Please try again.",
       },
-    });
+    }, phoneNumberId);
   }
 };
 
@@ -765,6 +657,7 @@ app.post("/webhook", async (req, res) => {
   if (req.body.object === "whatsapp_business_account") {
     const changes = req.body.entry?.[0]?.changes?.[0];
     const messages = changes.value?.messages;
+    
 
     if (!changes || !messages || messages.length === 0) {
       return res.status(400).send("Invalid payload or no messages.");
@@ -788,12 +681,12 @@ app.post("/webhook", async (req, res) => {
         switch (phoneNumberId) {
           case "553852214469319":
             console.log("Processing message for Phone Number 1:", phoneNumberId);
-            await handlePhoneNumber1Logic(message, phone, changes);
+            await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
             break;
 
           case "396791596844039":
             console.log("Processing message for Phone Number 2:", phoneNumberId);
-            await handlePhoneNumber2Logic(message, phone, changes);
+            await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
             break;
 
           default:
@@ -810,21 +703,22 @@ app.post("/webhook", async (req, res) => {
 
 
 
-async function handlePhoneNumber1Logic(message, phone, changes) {
+async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
   switch (message.type) {
             case "order":
               await handleOrder(
                 message,
                 changes,
-                changes.value.metadata.display_phone_number
+                changes.value.metadata.display_phone_number,
+                phoneNumberId
               );
               break;
 
             case "text":
-              await handleTextMessages(message, phone);
-              await handlePlateNumberValidation(message, phone);
-              await handleDateValidation(message, phone);
-              await handleNumberOfPeople(message, phone);
+              await handleTextMessages(message, phone, phoneNumberId);
+              await handlePlateNumberValidation(message, phone, phoneNumberId);
+              await handleDateValidation(message, phone, phoneNumberId);
+              await handleNumberOfPeople(message, phone, phoneNumberId);
               const userContext = userContexts.get(phone) || {};
               if (userContext.stage === "EXPECTING_TIN") {
                 const tin = message.text.body.trim();
@@ -853,7 +747,7 @@ async function handlePhoneNumber1Logic(message, phone, changes) {
                         ],
                       },
                     },
-                  });
+                  }, phoneNumberId);
 
                   return;  // Exit early after processing TIN
                 } else {
@@ -862,7 +756,7 @@ async function handlePhoneNumber1Logic(message, phone, changes) {
                     text: {
                       body: "Invalid TIN. Please provide a valid TIN.",
                     },
-                  });
+                  }, phoneNumberId);
                   return;
                 }
               }
@@ -870,7 +764,7 @@ async function handlePhoneNumber1Logic(message, phone, changes) {
 
             case "interactive":
               if (message.interactive.type === "nfm_reply") {
-                await handleNFMReply(message, phone);
+                await handleNFMReply(message, phone, phoneNumberId);
               } else if (message.interactive.type === "button_reply") {
                 const buttonId = message.interactive.button_reply.id;
 
@@ -884,27 +778,27 @@ async function handlePhoneNumber1Logic(message, phone, changes) {
                   await handlePaymentTermsReply(
                     buttonId,
                     phone,
-                    userContexts.get(phone)
+                    userContexts.get(phone), phoneNumberId
                   );
                   console.log("Expecting AGREE & PAY button reply");
                   return;
                 }
                 if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
-                  await handleMobileMoneySelection(buttonId, phone);
+                  await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
                   console.log("Expecting MTN & AIRTEL button reply");
                   return;
                 }
               } else {
-                await handleInteractiveMessages(message, phone);
+                await handleInteractiveMessages(message, phone, phoneNumberId);
               }
               break;
             case "document":
             case "image":
-              await handleDocumentUpload(message, phone);
+              await handleDocumentUpload(message, phone, phoneNumberId);
               break;
 
             case "location":
-              await handleLocation(message.location, phone);
+              await handleLocation(message.location, phone, phoneNumberId);
               break;
 
             default:
@@ -914,21 +808,22 @@ async function handlePhoneNumber1Logic(message, phone, changes) {
 
 
 
-async function handlePhoneNumber2Logic(message, phone, changes) {
+async function handlePhoneNumber2Logic(message, phone, changes, phoneNumberId) {
   switch (message.type) {
             case "order":
               await handleOrder(
                 message,
                 changes,
-                changes.value.metadata.display_phone_number
+                changes.value.metadata.display_phone_number,
+                phoneNumberId
               );
               break;
 
             case "text":
-              await handleTextMessages(message, phone);
-              await handlePlateNumberValidation(message, phone);
-              await handleDateValidation(message, phone);
-              await handleNumberOfPeople(message, phone);
+              await handleTextMessages(message, phone, phoneNumberId);
+              await handlePlateNumberValidation(message, phone, phoneNumberId);
+              await handleDateValidation(message, phone, phoneNumberId);
+              await handleNumberOfPeople(message, phone, phoneNumberId);
               const userContext = userContexts.get(phone) || {};
               if (userContext.stage === "EXPECTING_TIN") {
                 const tin = message.text.body.trim();
@@ -957,7 +852,7 @@ async function handlePhoneNumber2Logic(message, phone, changes) {
                         ],
                       },
                     },
-                  });
+                  }, phoneNumberId);
 
                   return;  // Exit early after processing TIN
                 } else {
@@ -966,7 +861,7 @@ async function handlePhoneNumber2Logic(message, phone, changes) {
                     text: {
                       body: "Invalid TIN. Please provide a valid TIN.",
                     },
-                  });
+                  }, phoneNumberId);
                   return;
                 }
               }
@@ -974,7 +869,7 @@ async function handlePhoneNumber2Logic(message, phone, changes) {
 
             case "interactive":
               if (message.interactive.type === "nfm_reply") {
-                await handleNFMReply(message, phone);
+                await handleNFMReply(message, phone, phoneNumberId);
               } else if (message.interactive.type === "button_reply") {
                 const buttonId = message.interactive.button_reply.id;
 
@@ -988,27 +883,28 @@ async function handlePhoneNumber2Logic(message, phone, changes) {
                   await handlePaymentTermsReply(
                     buttonId,
                     phone,
-                    userContexts.get(phone)
+                    userContexts.get(phone),
+                    phoneNumberId
                   );
                   console.log("Expecting AGREE & PAY button reply");
                   return;
                 }
                 if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
-                  await handleMobileMoneySelection(buttonId, phone);
+                  await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
                   console.log("Expecting MTN & AIRTEL button reply");
                   return;
                 }
               } else {
-                await handleInteractiveMessages(message, phone);
+                await handleInteractiveMessages(message, phone, phoneNumberId);
               }
               break;
             case "document":
             case "image":
-              await handleDocumentUpload(message, phone);
+              await handleDocumentUpload(message, phone, phoneNumberId);
               break;
 
             case "location":
-              await handleLocation(message.location, phone);
+              await handleLocation(message.location, phone, phoneNumberId);
               break;
 
             default:
@@ -1099,9 +995,9 @@ async function sendWhatsAppMessage(phone, messagePayload, phoneNumberId) {
 
 
 // new catalog with sections
-async function sendDefaultCatalog(phone) {
+async function sendDefaultCatalog(phone, phoneNumberId) {
   try {
-    const url = `https://graph.facebook.com/${VERSION}/${PHONE_NUMBER_ID}/messages`;
+    const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
 
     const payload = {
       messaging_product: "whatsapp",
@@ -1185,7 +1081,7 @@ async function sendDefaultCatalog(phone) {
 // Route to manually trigger a message
 app.post("/api/send-message", async (req, res) => {
   try {
-    const result = await sendDefaultCatalog(req.body.phone);
+    const result = await sendDefaultCatalog(req.body.phone, 888);
     res.status(200).json({
       success: true,
       message: "Message sent successfully!",
@@ -1318,7 +1214,7 @@ async function fetchFacebookCatalogProducts() {
 
 // Insurance services codes + the webhooks above
 // Initial welcome message
-async function sendWelcomeMessage(phone) {
+async function sendWelcomeMessage(phone, phoneNumberId) {
   const userContext = userContexts.get(phone) || {};
   userContext.stage = "WELCOME"; // Stage set to "WELCOME"
   userContexts.set(phone, userContext);
@@ -1360,11 +1256,11 @@ async function sendWelcomeMessage(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Claim Filing Process
-async function initiateClaimProcess(phone) {
+async function initiateClaimProcess(phone, phoneNumberId) {
   const payload = {
     type: "interactive",
     interactive: {
@@ -1404,11 +1300,11 @@ async function initiateClaimProcess(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Get insurance document
-async function requestInsuranceDocument(phone) {
+async function requestInsuranceDocument(phone, phoneNumberId) {
   const payload = {
     type: "text",
     text: {
@@ -1416,7 +1312,7 @@ async function requestInsuranceDocument(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 
   // Update user context to expect a document
   const userContext = userContexts.get(phone) || {};
@@ -1425,7 +1321,7 @@ async function requestInsuranceDocument(phone) {
 }
 
 // Vehicle Information Collection
-async function requestVehiclePlateNumber(phone) {
+async function requestVehiclePlateNumber(phone, phoneNumberId) {
   const payload = {
     type: "text",
     text: {
@@ -1433,11 +1329,11 @@ async function requestVehiclePlateNumber(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Insurance Period Selection
-async function selectInsurancePeriod(phone, plateNumber) {
+async function selectInsurancePeriod(phone, plateNumber, phoneNumberId) {
   const userContext = userContexts.get(phone) || {};
   userContext.plateNumber = plateNumber;
   userContext.stage = "EXPECTING_INSURANCE_PERIOD";
@@ -1471,11 +1367,11 @@ async function selectInsurancePeriod(phone, plateNumber) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Insurance Cover Types
-async function selectInsuranceCoverType(phone) {
+async function selectInsuranceCoverType(phone, phoneNumberId) {
   const payload = {
     //messaging_product: "whatsapp",
     //to: formattedPhone,
@@ -1501,10 +1397,10 @@ async function selectInsuranceCoverType(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
-async function selectToAddPersonalAccidentCover(phone) {
+async function selectToAddPersonalAccidentCover(phone, phoneNumberId) {
   const payload = {
     type: "interactive",
     interactive: {
@@ -1533,7 +1429,7 @@ async function selectToAddPersonalAccidentCover(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 
   const userContext = userContexts.get(phone) || {};
   userContext.stage = "PERSONAL_ACCIDENT_COVER";
@@ -1541,7 +1437,7 @@ async function selectToAddPersonalAccidentCover(phone) {
 }
 
 // Personal Accident Cover Categories
-async function selectPersonalAccidentCategory(phone) {
+async function selectPersonalAccidentCategory(phone, phoneNumberId) {
   const payload = {
     type: "interactive",
     interactive: {
@@ -1602,11 +1498,11 @@ async function selectPersonalAccidentCategory(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Number of Covered People
-async function numberOfCoveredPeople(phone) {
+async function numberOfCoveredPeople(phone, phoneNumberId) {
   const userContext = userContexts.get(phone) || {};
   // Set the context to expect number of people
   userContext.stage = "EXPECTING_NUMBER_OF_PEOPLE";
@@ -1618,11 +1514,11 @@ async function numberOfCoveredPeople(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
 // Payment Installment Options - added
-async function selectPaymentPlan(phone) {
+async function selectPaymentPlan(phone, phoneNumberId) {
   const payload = {
     type: "interactive",
     interactive: {
@@ -1673,10 +1569,10 @@ async function selectPaymentPlan(phone) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
-async function confirmAndPay(phone, selectedInstallmentChoice) {
+async function confirmAndPay(phone, selectedInstallmentChoice, phoneNumberId) {
   const userContext = userContexts.get(phone) || {};
 
   const totalCost = userContext.totalCost || 0;  
@@ -1739,14 +1635,14 @@ async function confirmAndPay(phone, selectedInstallmentChoice) {
     },
   };
 
-  await sendWhatsAppMessage(phone, payload);
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
   // Set the context to expect number of people
   userContext.stage = "EXPECTING_CONFIRM_PAY";
   userContexts.set(phone, userContext);
 }
 
 // Last message - get insurance
-async function processPayment(phone, paymentPlan) {
+async function processPayment(phone, paymentPlan, phoneNumberId) {
     const userContext = userContexts.get(phone) || {};
 
     userContext.userPhone = phone;
@@ -1786,7 +1682,7 @@ async function processPayment(phone, paymentPlan) {
   console.log("Processing payment for:", phone, paymentPlan);
 
   // Simulate Payment
-  await sendWhatsAppMessage(phone, paymentPayload);
+  await sendWhatsAppMessage(phone, paymentPayload, phoneNumberId);
 
   const todayFirebase = new Date();
   const formattedDateFirebase = `${todayFirebase.getDate().toString().padStart(2, '0')}/${(todayFirebase.getMonth() + 1).toString().padStart(2, '0')}/${todayFirebase.getFullYear()}`;
