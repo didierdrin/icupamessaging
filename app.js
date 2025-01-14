@@ -660,52 +660,45 @@ const processedMessages = new Set();
 
 // Webhook endpoint for receiving messages
 app.post("/webhook", async (req, res) => {
-    console.log("Webhook received:", JSON.stringify(req.body, null, 2));
-  
     if (req.body.object === "whatsapp_business_account") {
-      const changes = req.body.entry?.[0]?.changes?.[0];
-      const messages = changes.value?.messages;
-  
-      if (!changes || !messages || messages.length === 0) {
-        return res.status(400).send("Invalid payload or no messages.");
-      }
-  
-      const phoneNumberId = changes.value?.metadata?.phone_number_id;
-  
-      for (const message of messages) {
-        const phone = message.from;
-        const messageId = message.id;
-  
-        // Deduplication: Check processedMessages for duplicates
-        if (processedMessages.has(messageId)) {
-          console.log("Duplicate message ignored:", messageId);
-          continue;
+        const changes = req.body.entry?.[0]?.changes?.[0];
+        const messages = changes.value?.messages;
+        const phoneNumberId = changes.value?.metadata?.phone_number_id;
+
+        if (!changes || !messages || !phoneNumberId) {
+            return res.status(400).send("Invalid payload.");
         }
-  
-        // Add to processedMessages and remove after processing
-        processedMessages.add(messageId);
-  
-        try {
-          if (phoneNumberId === "396791596844039") {
-            await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
-          } else if (phoneNumberId === "553852214469319") {
-            await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
-          } else {
-            console.log("Unknown phone number ID:", phoneNumberId);
-          }
-        } catch (err) {
-          console.error("Error processing message:", err.message);
-        } finally {
-          // Optional: Cleanup processedMessages after timeout or processing
-          setTimeout(() => processedMessages.delete(messageId), 300000); // Retain for 5 minutes
+
+        for (const message of messages) {
+            const phone = message.from;
+            const uniqueMessageId = `${phoneNumberId}-${message.id}`;
+
+            if (processedMessages.has(uniqueMessageId)) {
+                console.log("Duplicate message ignored:", uniqueMessageId);
+                continue;
+            }
+
+            processedMessages.add(uniqueMessageId);
+            try {
+                if (phoneNumberId === "396791596844039") {
+                    await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
+                } else if (phoneNumberId === "553852214469319") {
+                    await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
+                } else {
+                    console.warn("Unknown phone number ID:", phoneNumberId);
+                }
+            } catch (err) {
+                console.error("Error processing message:", err.message);
+            } finally {
+                setTimeout(() => processedMessages.delete(uniqueMessageId), 300000);
+            }
         }
-      }
     }
-  
+
     res.sendStatus(200);
-  });
-  
-  
+});
+
+
   
   async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
     switch (message.type) {
