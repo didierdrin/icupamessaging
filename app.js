@@ -1067,9 +1067,10 @@ async function testWhatsAppConnection() {
 }
 
 // Unified message sending function
-async function sendWhatsAppMessage(phone, messagePayload) {
+async function sendWhatsAppMessage(phone, messagePayload, phoneNumberId) {
   try {
-    const url = `https://graph.facebook.com/${VERSION}/${PHONE_NUMBER_ID}/messages`;
+    const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
+
     const response = await axios({
       method: "POST",
       url: url,
@@ -1085,16 +1086,17 @@ async function sendWhatsAppMessage(phone, messagePayload) {
       },
     });
 
-    console.log("Message sent successfully:", response.data);
+    console.log(`Message sent successfully from ${phoneNumberId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(
-      "WhatsApp message sending error:",
+      `WhatsApp message sending error from ${phoneNumberId}:`,
       error.response?.data || error.message
     );
     throw error;
   }
 }
+
 
 // new catalog with sections
 async function sendDefaultCatalog(phone) {
