@@ -763,22 +763,55 @@ app.post("/webhook", async (req, res) => {
   console.log("Webhook received:", JSON.stringify(req.body, null, 2));
 
   if (req.body.object === "whatsapp_business_account") {
-    const changes = req.body.entry[0].changes[0];
-    const messages = changes.value.messages;
+    const changes = req.body.entry?.[0]?.changes?.[0];
+    const messages = changes.value?.messages;
 
-    if (changes.field === "messages" && messages && messages.length > 0) {
-      for (const message of messages) {
-        const phone = message.from;
-        const messageId = message.id;
+    if (!changes || !messages || messages.length === 0) {
+      return res.status(400).send("Invalid payload or no messages.");
+    }
 
-        if (processedMessages.has(messageId)) {
-          console.log("Duplicate message ignored:", messageId);
-          continue;
+    // Extract phone_number_id to differentiate between the two numbers
+    const phoneNumberId = changes.value?.metadata?.phone_number_id;
+
+    for (const message of messages) {
+      const phone = message.from;
+      const messageId = message.id;
+
+      // Avoid duplicate message processing
+      if (processedMessages.has(messageId)) {
+        console.log("Duplicate message ignored:", messageId);
+        continue;
+      }
+      processedMessages.add(messageId);
+
+      try {
+        switch (phoneNumberId) {
+          case "553852214469319":
+            console.log("Processing message for Phone Number 1:", phoneNumberId);
+            await handlePhoneNumber1Logic(message, phone, changes);
+            break;
+
+          case "396791596844039":
+            console.log("Processing message for Phone Number 2:", phoneNumberId);
+            await handlePhoneNumber2Logic(message, phone, changes);
+            break;
+
+          default:
+            console.log("Unknown phone number ID:", phoneNumberId);
         }
-        processedMessages.add(messageId);
+      } catch (err) {
+        console.error("Error processing message:", err.message);
+      }
+    }
+  }
 
-        try {
-          switch (message.type) {
+  res.sendStatus(200);
+});
+
+
+
+async function handlePhoneNumber1Logic(message, phone, changes) {
+  switch (message.type) {
             case "order":
               await handleOrder(
                 message,
@@ -804,23 +837,23 @@ app.post("/webhook", async (req, res) => {
                   userContexts.set(phone, userContext);
 
                   await sendWhatsAppMessage(phone, {
-        type: "interactive",
-        interactive: {
-          type: "button",
-          body: {
-            text: "Proceed to payment",
-          },
-          action: {
-            buttons: [
-              { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
-              {
-                type: "reply",
-                reply: { id: "airtel_mobile_money", title: "Airtel Money" },
-              },
-            ],
-          },
-        },
-      });
+                    type: "interactive",
+                    interactive: {
+                      type: "button",
+                      body: {
+                        text: "Proceed to payment",
+                      },
+                      action: {
+                        buttons: [
+                          { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
+                          {
+                            type: "reply",
+                            reply: { id: "airtel_mobile_money", title: "Airtel Money" },
+                          },
+                        ],
+                      },
+                    },
+                  });
 
                   return;  // Exit early after processing TIN
                 } else {
@@ -877,15 +910,113 @@ app.post("/webhook", async (req, res) => {
             default:
               console.log("Unrecognized message type:", message.type);
           }
-        } catch (err) {
-          console.error("Error processing message:", err.message);
-        }
-      }
-    }
-  }
+}
 
-  res.sendStatus(200);
-});
+
+
+async function handlePhoneNumber2Logic(message, phone, changes) {
+  switch (message.type) {
+            case "order":
+              await handleOrder(
+                message,
+                changes,
+                changes.value.metadata.display_phone_number
+              );
+              break;
+
+            case "text":
+              await handleTextMessages(message, phone);
+              await handlePlateNumberValidation(message, phone);
+              await handleDateValidation(message, phone);
+              await handleNumberOfPeople(message, phone);
+              const userContext = userContexts.get(phone) || {};
+              if (userContext.stage === "EXPECTING_TIN") {
+                const tin = message.text.body.trim();
+                if (tin) {
+                  console.log(`User ${phone} provided TIN: ${tin}`);
+                  // Store the TIN or process it as required
+                  // Update the context to expect the location
+                  //userContext.tin = tin;  // Save the TIN
+                  userContext.stage = "EXPECTING_MTN_AIRTEL"; // Move to location stage
+                  userContexts.set(phone, userContext);
+
+                  await sendWhatsAppMessage(phone, {
+                    type: "interactive",
+                    interactive: {
+                      type: "button",
+                      body: {
+                        text: "Proceed to payment",
+                      },
+                      action: {
+                        buttons: [
+                          { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
+                          {
+                            type: "reply",
+                            reply: { id: "airtel_mobile_money", title: "Airtel Money" },
+                          },
+                        ],
+                      },
+                    },
+                  });
+
+                  return;  // Exit early after processing TIN
+                } else {
+                  await sendWhatsAppMessage(phone, {
+                    type: "text",
+                    text: {
+                      body: "Invalid TIN. Please provide a valid TIN.",
+                    },
+                  });
+                  return;
+                }
+              }
+              break;
+
+            case "interactive":
+              if (message.interactive.type === "nfm_reply") {
+                await handleNFMReply(message, phone);
+              } else if (message.interactive.type === "button_reply") {
+                const buttonId = message.interactive.button_reply.id;
+
+                // Only process if MENU pay
+                const userContext = userContexts.get(phone) || {};
+                if (
+                  userContext.stage === "EXPECTING_CONFIRM_PAY" ||
+                  userContext.stage === "PERSONAL_ACCIDENT_COVER" ||
+                  userContext.stage === "EXPECTING_INSURANCE_PERIOD"
+                ) {
+                  await handlePaymentTermsReply(
+                    buttonId,
+                    phone,
+                    userContexts.get(phone)
+                  );
+                  console.log("Expecting AGREE & PAY button reply");
+                  return;
+                }
+                if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
+                  await handleMobileMoneySelection(buttonId, phone);
+                  console.log("Expecting MTN & AIRTEL button reply");
+                  return;
+                }
+              } else {
+                await handleInteractiveMessages(message, phone);
+              }
+              break;
+            case "document":
+            case "image":
+              await handleDocumentUpload(message, phone);
+              break;
+
+            case "location":
+              await handleLocation(message.location, phone);
+              break;
+
+            default:
+              console.log("Unrecognized message type:", message.type);
+          }
+}
+
+
 
 // Webhook verification
 app.get("/webhook", (req, res) => {
