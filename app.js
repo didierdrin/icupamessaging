@@ -436,6 +436,10 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User requested the menu.");
       await sendDefaultCatalog(phone, phoneNumberId);
       break;
+    case "icupa":
+      console.log("User requested the menu.");
+      await sendDefaultCatalog2(phone, phoneNumberId);
+      break;
 
     case "insurance":
       console.log("User requested insurance options.");
@@ -991,7 +995,88 @@ async function sendWhatsAppMessage(phone, messagePayload, phoneNumberId) {
 
 
 // new catalog with sections
-async function sendDefaultCatalog(phone, phoneNumberId) {
+async function sendDefaultCatalog(phone, 553852214469319) {
+  try {
+    const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
+
+    const payload = {
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "interactive",
+      interactive: {
+        type: "product_list",
+        header: {
+          type: "text",  // The header type should be "image" to support both image and text
+          text: "ICUPA App"  // You can include text along with the image
+        },
+        body: { text: "Order drinks directly & get free delivery!" },
+        action: {
+          catalog_id: "545943538321713",
+          sections: [
+            {
+              title: "Our Products",
+              product_items: [
+                { product_retailer_id: "lxas8cc342" }, // two latest
+                //{ product_retailer_id: "wzz0yoorin" },
+                //{ product_retailer_id: "5bn8ew7t9v" },
+                { product_retailer_id: "fn92a2u1n0" },
+                { product_retailer_id: "4nv3b0a4je" },
+                { product_retailer_id: "f1i6w3reo3" },
+                { product_retailer_id: "6jx5tp7yqp" }, // carbonated drinks
+                { product_retailer_id: "h51qjmskbx" },
+                { product_retailer_id: "y1qglajnhv" },
+                { product_retailer_id: "pbqnbacxrc" },
+                { product_retailer_id: "okaifyloso" },
+                { product_retailer_id: "wzvz714ih8" },
+                { product_retailer_id: "uxeg0mzdv7" },
+                { product_retailer_id: "p8vhimsnat" },
+                { product_retailer_id: "6q0k2c823u" },
+                { product_retailer_id: "0ixo8tkei5" },
+                { product_retailer_id: "ycgvnxm07l" },
+                { product_retailer_id: "p76ydylhfa" },
+                { product_retailer_id: "qye71mwlt6" },
+                { product_retailer_id: "80g014ofpq" },
+                { product_retailer_id: "7ylsmqn0mg" },
+                { product_retailer_id: "i0ts8ijseh" },
+                { product_retailer_id: "qlufbd1r69" },
+                { product_retailer_id: "vjvih6bc4b" }, // beers //Amstel
+                { product_retailer_id: "08gro8egrt" }, // Heinken
+                { product_retailer_id: "boq0hoiq7a" }, // Turbo King
+                { product_retailer_id: "fqt5zp6z5k" }, // Legend
+                { product_retailer_id: "l4bflbemkw" }, // Mutzig 33 CL 
+                { product_retailer_id: "njlmxlf1zp" },
+                { product_retailer_id: "k0bsesfzs8" }, // Mutzig 65 CL
+                { product_retailer_id: "td55lg0z7v" }, // Primus 50 CL
+                { product_retailer_id: "qqbhwrsty8" }, // Primus 70 CL
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const response = await axios({
+      method: "POST",
+      url: url,
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      data: payload,
+    });
+
+    console.log("Default catalog sent successfully to:", phone);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error sending default catalog:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+}
+
+async function sendDefaultCatalog2(phone, 396791596844039) {
   try {
     const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
 
