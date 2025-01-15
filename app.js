@@ -298,20 +298,39 @@ const handlePaymentTermsReply = async (replyId, phone, userContext, phoneNumberI
 };
 
 const handleMobileMoneySelection = async (buttonId, phone, phoneNumberId) => {
+  const userContext = userContexts.get(phone);
+  if (!userContext) {
+    console.log("No user context found for phone:", phone);
+    return;
+  }
+
+  const vendorNumber = userContext.vendorNumber || "+250788767816"; // Default to Rwanda
+  const currentCurrency = userContext.currency || "RWF"; // Default to Rwanda
   let callToActionMessage = "";
 
-  switch (buttonId) {
-    case "mtn_momo":
-      callToActionMessage = `Please pay with\nMOMO to ${250788767816}, name Icupa\n____________________\nYour order is being processed and will be delivered soon`;
-      break;
-
-    case "airtel_mobile_money":
-      callToActionMessage = `Please pay with\nAirtel to ${250788767816}, name Icupa\n____________________\nYour order is being processed and will be delivered soon`;
-      break;
-
-    default:
-      console.log("Unrecognized mobile money option");
+  if (currentCurrency === "RWF") {
+    // Payment messages for Rwanda
+    if (buttonId === "mtn_momo") {
+      callToActionMessage = `Please pay with\nMTN MoMo to ${vendorNumber}, name Icupa\n____________________\nYour order is being processed and will be delivered soon.`;
+    } else if (buttonId === "airtel_mobile_money") {
+      callToActionMessage = `Please pay with\nAirtel Money to ${vendorNumber}, name Icupa\n____________________\nYour order is being processed and will be delivered soon.`;
+    } else {
+      console.log("Unrecognized mobile money option for Rwanda:", buttonId);
       return;
+    }
+  } else if (currentCurrency === "XOF") {
+    // Payment messages for Togo
+    if (buttonId === "mtn_momo") {
+      callToActionMessage = `Veuillez payer avec\nMTN Mobile Money au ${vendorNumber}, nom Icupa\n____________________\nVotre commande est en cours de traitement et sera livrée sous peu.`;
+    } else if (buttonId === "airtel_mobile_money") {
+      callToActionMessage = `Veuillez payer avec\nAirtel Money au ${vendorNumber}, nom Icupa\n____________________\nVotre commande est en cours de traitement et sera livrée sous peu.`;
+    } else {
+      console.log("Unrecognized mobile money option for Togo:", buttonId);
+      return;
+    }
+  } else {
+    console.log("Unsupported currency:", currentCurrency);
+    return;
   }
 
   const redirectPayload = {
@@ -321,6 +340,7 @@ const handleMobileMoneySelection = async (buttonId, phone, phoneNumberId) => {
 
   await sendWhatsAppMessage(phone, redirectPayload, phoneNumberId);
 };
+
 
 const handleNumberOfPeople = async (message, phone, phoneNumberId) => {
   const userContext = userContexts.get(phone) || {};
@@ -659,6 +679,8 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     }, phoneNumberId);
 
     // Update user context to expect TIN input
+    userContext.vendorNumber = vendorNumber;
+    userContext.currency = currentCurrency;
     userContext.stage = "EXPECTING_TIN";
     userContexts.set(phone, userContext);
 
@@ -751,8 +773,7 @@ app.post("/webhook", async (req, res) => {
 
         processedMessages.add(uniqueMessageId);
       //if (phoneNumberId === "396791596844039") {
-             //   await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
-            //} else 
+             
         try {
             if (phoneNumberId === "553852214469319") {
                 await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
@@ -876,109 +897,6 @@ app.post("/webhook", async (req, res) => {
   
   
   
-  async function handlePhoneNumber2Logic(message, phone, changes, phoneNumberId) {
-    switch (message.type) {
-              case "order":
-                await handleOrder(
-                  message,
-                  changes,
-                  changes.value.metadata.display_phone_number,
-                  phoneNumberId
-                );
-                break;
-  
-              case "text":
-                await handleTextMessages2(message, phone, phoneNumberId);
-                await handlePlateNumberValidation(message, phone, phoneNumberId);
-                await handleDateValidation(message, phone, phoneNumberId);
-                await handleNumberOfPeople(message, phone, phoneNumberId);
-                const userContext = userContexts.get(phone) || {};
-                if (userContext.stage === "EXPECTING_TIN") {
-                  const tin = message.text.body.trim();
-                  if (tin) {
-                    console.log(`User ${phone} provided TIN: ${tin}`);
-                    // Store the TIN or process it as required
-                    // Update the context to expect the location
-                    //userContext.tin = tin;  // Save the TIN
-                    userContext.stage = "EXPECTING_MTN_AIRTEL"; // Move to location stage
-                    userContexts.set(phone, userContext);
-  
-                    await sendWhatsAppMessage(phone, {
-                      type: "interactive",
-                      interactive: {
-                        type: "button",
-                        body: {
-                          text: "Proceed to payment",
-                        },
-                        action: {
-                          buttons: [
-                            { type: "reply", reply: { id: "mtn_momo", title: "MTN MoMo" } },
-                            {
-                              type: "reply",
-                              reply: { id: "airtel_mobile_money", title: "Airtel Money" },
-                            },
-                          ],
-                        },
-                      },
-                    }, phoneNumberId);
-  
-                    return;  // Exit early after processing TIN
-                  } else {
-                    await sendWhatsAppMessage(phone, {
-                      type: "text",
-                      text: {
-                        body: "Invalid TIN. Please provide a valid TIN.",
-                      },
-                    }, phoneNumberId);
-                    return;
-                  }
-                }
-                break;
-  
-              case "interactive":
-                if (message.interactive.type === "nfm_reply") {
-                  await handleNFMReply(message, phone, phoneNumberId);
-                } else if (message.interactive.type === "button_reply") {
-                  const buttonId = message.interactive.button_reply.id;
-  
-                  // Only process if MENU pay
-                  const userContext = userContexts.get(phone) || {};
-                  if (
-                    userContext.stage === "EXPECTING_CONFIRM_PAY" ||
-                    userContext.stage === "PERSONAL_ACCIDENT_COVER" ||
-                    userContext.stage === "EXPECTING_INSURANCE_PERIOD"
-                  ) {
-                    await handlePaymentTermsReply(
-                      buttonId,
-                      phone,
-                      userContexts.get(phone),
-                      phoneNumberId
-                    );
-                    console.log("Expecting AGREE & PAY button reply");
-                    return;
-                  }
-                  if (userContext.stage === "EXPECTING_MTN_AIRTEL") {
-                    await handleMobileMoneySelection(buttonId, phone, phoneNumberId);
-                    console.log("Expecting MTN & AIRTEL button reply");
-                    return;
-                  }
-                } else {
-                  await handleInteractiveMessages(message, phone, phoneNumberId);
-                }
-                break;
-              case "document":
-              case "image":
-                await handleDocumentUpload(message, phone, phoneNumberId);
-                break;
-  
-              case "location":
-                await handleLocation(message.location, phone, phoneNumberId);
-                break;
-  
-              default:
-                console.log("Unrecognized message type:", message.type);
-            }
-  }
   
   
   
