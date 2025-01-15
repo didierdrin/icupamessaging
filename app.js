@@ -613,7 +613,7 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     }
 
     // Extract order details from userContext
-    const { orderId, customerInfo, items } = userContext.order;
+    const { orderIdx, customerInfo, items } = userContext.order;
 
     // Fetch catalog products for enrichment
     const catalogProducts = await fetchFacebookCatalogProducts();
@@ -644,18 +644,18 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     }
 
     function orderNumber() {
-      const randomNum = uuidv4().split('-')[0];
+      const randomNum = Math.floor(1 + Math.random() * (10000000 - 1)); //uuidv4().split('-')[0];
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
       const formattedNum = randomNum.slice(0, 6).padStart(6, "0");
       return `ORD-${dateStr}-${formattedNum}`;
     }
 
-    const orderidd = orderId || orderNumber();
+    const orderidd = orderNumber();
     
     // Prepare order data for Firebase
     const orderData = {
-      orderidd,
+      orderId: orderidd,
       phone: customerInfo.phone,
       currency: currentCurrency,
       amount: enrichedItems.reduce(
