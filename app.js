@@ -1224,12 +1224,19 @@ app.post("/api/save-order", async (req, res) => {
     });
 
     let currentOrder = 0;
-
+    
+    function getRandomInt(min, max) {
+    min = Math.ceil(min); 
+    max = Math.floor(max); 
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+const randomInt = getRandomInt(1, 10000000);
+    
     function orderNumber() {
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      return `ORD-${dateStr}-${currentOrder.toString().padStart(6, "0")}`;
+      return `ORD-${dateStr}-${randomInt.toString().padStart(6, "0")}`;
     }
 
     const orderidd = orderNumber();
