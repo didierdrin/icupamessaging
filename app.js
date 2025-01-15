@@ -1225,11 +1225,11 @@ app.post("/api/save-order", async (req, res) => {
     });
 
     // Determine the vendor number based on currency
-    const currencies = enrichedItems.map((item) => item.currency);
+    const currencies = enrichedItems[0].currency; //enrichedItems.map((item) => item.currency);
     let vendorNumber = "+250788767816"; // Default to Rwandan number
     let currentCurrency = "RWF";
-
-    if (currencies.includes("XOF")) {
+    // currencies.includes("XOF")
+    if (currencies == "XOF") {
       vendorNumber = "+22892450808"; // Togo number
       currentCurrency = "XOF"; // Togo currency
     }
@@ -1245,7 +1245,8 @@ app.post("/api/save-order", async (req, res) => {
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      return `ORD-${dateStr}-${randomNum.toString().padStart(6, "0")}`;
+      return `ORD-${dateStr}-${randomNum.toString()`;
+      //randomNum.toString().padStart(6, "0")}
     }
 
     const orderidd = orderNumber();
