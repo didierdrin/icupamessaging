@@ -6,6 +6,7 @@ import { firestore } from "./firebaseConfig.js";
 import { firestore2 } from "./firebaseConfig2.js"; 
 import http from "http";
 import https from "https";
+import { v4 as uuidv4 } from "uuid";
 //import admin from 'firebase-admin';
 
 
@@ -1240,7 +1241,7 @@ app.post("/api/save-order", async (req, res) => {
     function orderNumber() {
       
       
-      const randomNum = rand(1, 10000000);
+      const randomNum = uuidv4().split('-')[0];
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
