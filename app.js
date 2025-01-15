@@ -433,11 +433,11 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User context reset.");
       break;
 
-    case "menu":
+    case "icupa":
       console.log("User requested the menu.");
       await sendDefaultCatalog(phone, phoneNumberId);
       break;
-    case "icupa":
+    case "menu":
       console.log("User requested the menu.");
       await sendDefaultCatalog2(phone, phoneNumberId);
       break;
@@ -466,11 +466,11 @@ const handleTextMessages2 = async (message, phone, phoneNumberId) => {
       console.log("User context reset.");
       break;
 
-    case "menu":
+    case "icupa":
       console.log("User requested the menu.");
       await sendDefaultCatalog(phone, phoneNumberId);
       break;
-    case "icupa":
+    case "menu":
       console.log("User requested the menu.");
       await sendDefaultCatalog2(phone, phoneNumberId);
       break;
@@ -1125,16 +1125,16 @@ async function sendDefaultCatalog2(phone, phoneNumberId) {
         },
         body: { text: "Order drinks directly & get free delivery!" },
         action: {
-          catalog_id: "1171177114712943",
+          catalog_id: "545943538321713",
           sections: [
             {
               title: "Our Products",
               product_items: [
-                { product_retailer_id: "cq8hwdsfeo" }, // two latest
-                { product_retailer_id: "2fw4tfr98s" },
-                { product_retailer_id: "l87ozzm7zf" },
-                { product_retailer_id: "jx6fk9uwaq" },
-                { product_retailer_id: "mt77h99d56" }, // carbonated drinks
+                { product_retailer_id: "1vlsxu9sm1" }, // two latest
+                { product_retailer_id: "bmubfoij8r" },
+                { product_retailer_id: "nsyh2u4zgp" },
+                { product_retailer_id: "orimzz8cum" },
+                { product_retailer_id: "y2co4gox62" }, // carbonated drinks
            
               ],
             },
