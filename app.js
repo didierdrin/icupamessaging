@@ -1225,19 +1225,15 @@ app.post("/api/save-order", async (req, res) => {
 
     let currentOrder = 0;
     
-    function getRandomInt(min, max) {
-    min = Math.ceil(min); 
-    max = Math.floor(max); 
-    return Math.floor(Math.random() * (max - min)) + min;
-}
-
+   
     
     function orderNumber() {
-      const randomInt = getRandomInt(1, 10000000);
+      
+      const randomNum = Math.floor(Math.random() * 999999);
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      return `ORD-${dateStr}-${randomInt.toString().padStart(6, "0")}`;
+      return `ORD-${dateStr}-${randomNum.toString().padStart(6, "0")}`;
     }
 
     const orderidd = orderNumber();
