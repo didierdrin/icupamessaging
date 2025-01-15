@@ -1245,7 +1245,11 @@ app.post("/api/save-order", async (req, res) => {
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      return `ORD-${dateStr}-${randomNum.toString()`;
+      //return `ORD-${dateStr}-${randomNum.toString()}`;
+      // Format the random number to always be 6 digits
+      const formattedNum = randomNum.slice(0, 6).padStart(6, "0");
+  
+      return `ORD-${dateStr}-${formattedNum}`;
       //randomNum.toString().padStart(6, "0")}
     }
 
