@@ -575,6 +575,7 @@ const handleInteractiveMessages = async (message, phone, phoneNumberId) => {
   }
 };
 
+
 const handleLocation = async (location, phone, phoneNumberId) => {
   try {
     // Retrieve the order from userContext
@@ -591,28 +592,12 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       return;
     }
 
-    // Extract order details from userContext
-    const { orderId, customerInfo, items } = userContext.order;
-
-    // Calculate total amount from items
-    const totalAmount = items.reduce((total, item) => total + (item.item_price * item.quantity), 0);
-
-    // Now save the order to the external API with location information
-    const response = await axios.post(
-      `https://icupamessaging.onrender.com/api/save-order`,
-      {
-        orderId,
-        customerInfo,
-        items,
-        totalAmount,
-        deliveryLocation: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }
-      }
-    );
-
-    console.log("Order successfully saved to the external API:", response.data);
+    // Add location to userContext order
+    userContext.order.deliveryLocation = {
+      latitude: location.latitude,
+      longitude: location.longitude
+    };
+    userContexts.set(phone, userContext);
 
     // Send the TIN request to the customer
     await sendWhatsAppMessage(phone, {
@@ -626,9 +611,9 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     userContext.stage = "EXPECTING_TIN";
     userContexts.set(phone, userContext);
 
-    console.log("Location updated and order saved successfully.");
+    console.log("Location updated successfully in user context.");
   } catch (error) {
-    console.error("Error processing location and saving order:", error.message);
+    console.error("Error processing location:", error.message);
     await sendWhatsAppMessage(phone, {
       type: "text",
       text: {
