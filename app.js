@@ -454,11 +454,11 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User context reset.");
       break;
 
-    case "icupa":
+    case "menu":
       console.log("User requested the menu.");
       await sendDefaultCatalog(phone, phoneNumberId);
       break;
-    case "menu":
+    case "second-menu":
       console.log("User requested the menu.");
       await sendDefaultCatalog2(phone, phoneNumberId);
       break;
