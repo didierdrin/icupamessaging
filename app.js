@@ -599,7 +599,7 @@ const handleLocation = async (location, phone, phoneNumberId) => {
 
     // Now save the order to the external API with location information
     const response = await axios.post(
-      `https://ikanisamessaging.onrender.com/api/save-order`,
+      `https://icupamessaging.onrender.com/api/save-order`,
       {
         orderId,
         customerInfo,
