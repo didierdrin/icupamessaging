@@ -592,12 +592,63 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       return;
     }
 
-    // Add location to userContext order
-    userContext.order.deliveryLocation = {
-      latitude: location.latitude,
-      longitude: location.longitude
+    // Extract order details from userContext
+    const { orderId, customerInfo, items } = userContext.order;
+
+    // Fetch catalog products for enrichment
+    const catalogProducts = await fetchFacebookCatalogProducts();
+
+    // Enrich items with product details
+    const enrichedItems = items.map((item) => {
+      const productDetails = catalogProducts.find(
+        (product) => product.retailer_id === item.product_retailer_id
+      );
+      return {
+        product: item.product_retailer_id,
+        quantity: item.quantity,
+        price: item.item_price,
+        currency: item.currency,
+        product_name: productDetails?.name || "Unknown Product",
+        product_image: productDetails?.image_url || "defaultImage.jpg",
+      };
+    });
+
+    // Determine vendor and currency
+    const currencies = enrichedItems[0].currency;
+    let vendorNumber = "+250788767816"; // Default Rwanda
+    let currentCurrency = "RWF";
+    
+    if (currencies === "XOF") {
+      vendorNumber = "+22892450808"; // Togo
+      currentCurrency = "XOF";
+    }
+
+    // Prepare order data for Firebase
+    const orderData = {
+      orderId,
+      phone: customerInfo.phone,
+      currency: currentCurrency,
+      amount: enrichedItems.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+      ),
+      products: enrichedItems,
+      user: `+${customerInfo.phone}`,
+      date: new Date(),
+      paid: false,
+      rejected: false,
+      served: false,
+      accepted: false,
+      vendor: vendorNumber,
+      deliveryLocation: {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }
     };
-    userContexts.set(phone, userContext);
+
+    // Save directly to Firebase
+    const docRef = await firestore.collection("whatsappOrders").add(orderData);
+    console.log("Order saved successfully to Firebase with ID:", docRef.id);
 
     // Send the TIN request to the customer
     await sendWhatsAppMessage(phone, {
@@ -611,9 +662,9 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     userContext.stage = "EXPECTING_TIN";
     userContexts.set(phone, userContext);
 
-    console.log("Location updated successfully in user context.");
+    console.log("Location updated and order saved successfully.");
   } catch (error) {
-    console.error("Error processing location:", error.message);
+    console.error("Error processing location and saving order:", error.message);
     await sendWhatsAppMessage(phone, {
       type: "text",
       text: {
