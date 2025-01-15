@@ -1229,7 +1229,8 @@ app.post("/api/save-order", async (req, res) => {
     
     function orderNumber() {
       
-      const randomNum = Math.floor(Math.random() * 999999);
+      
+      const randomNum = Math.floor(Math.random() * 1000000);
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
