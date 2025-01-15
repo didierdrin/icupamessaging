@@ -458,6 +458,10 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User requested the menu.");
       await sendDefaultCatalog(phone, phoneNumberId);
       break;
+    case "icupa":
+      console.log("User requested the menu.");
+      await sendDefaultCatalog(phone, phoneNumberId);
+      break;
     case "second-menu":
       console.log("User requested the menu.");
       await sendDefaultCatalog2(phone, phoneNumberId);
