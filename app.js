@@ -643,9 +643,19 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       currentCurrency = "XOF";
     }
 
+    function orderNumber() {
+      const randomNum = uuidv4().split('-')[0];
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+      const formattedNum = randomNum.slice(0, 6).padStart(6, "0");
+      return `ORD-${dateStr}-${formattedNum}`;
+    }
+
+    const orderidd = orderId || orderNumber();
+    
     // Prepare order data for Firebase
     const orderData = {
-      orderId,
+      orderidd,
       phone: customerInfo.phone,
       currency: currentCurrency,
       amount: enrichedItems.reduce(
