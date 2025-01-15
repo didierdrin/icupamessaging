@@ -644,10 +644,11 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     }
 
     function orderNumber() {
-      const randomNum = Math.floor(1 + Math.random() * (10000000 - 1)); //uuidv4().split('-')[0];
+      const randomNum = Math.floor(1 + Math.random() * (10000000 - 1)); // Generates a number between 1 and 9999999
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      const formattedNum = randomNum.slice(0, 6).padStart(6, "0");
+      const formattedNum = randomNum.toString().padStart(6, "0"); // Convert to string and pad with leading zeros if needed
+
       return `ORD-${dateStr}-${formattedNum}`;
     }
 
