@@ -1223,6 +1223,16 @@ app.post("/api/save-order", async (req, res) => {
       };
     });
 
+    // Determine the vendor number based on currency
+    const currencies = enrichedItems.map((item) => item.currency);
+    let vendorNumber = "+250788767816"; // Default to Rwandan number
+    let currentCurrency = "RWF";
+
+    if (currencies.includes("XOF")) {
+      vendorNumber = "+22892450808"; // Togo number
+      currentCurrency = "XOF"; // Togo currency
+    }
+
     let currentOrder = 0;
     
    
@@ -1230,7 +1240,7 @@ app.post("/api/save-order", async (req, res) => {
     function orderNumber() {
       
       
-      const randomNum = Math.floor(Math.random() * 1000000);
+      const randomNum = rand(1, 10000000);
       currentOrder += 1;
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
@@ -1243,6 +1253,7 @@ app.post("/api/save-order", async (req, res) => {
     const orderData = {
       orderId: orderidd,
       phone: customerInfo.phone,
+      currency: currentCurrency,
       amount: enrichedItems.reduce(
         (total, item) => total + item.price * item.quantity,
         0
@@ -1254,7 +1265,7 @@ app.post("/api/save-order", async (req, res) => {
       rejected: false,
       served: false,
       accepted: false,
-      vendor: `+250788767816`,
+      vendor: vendorNumber,
       deliveryLocation: deliveryLocation || null // Add location data
     };
 
