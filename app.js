@@ -713,10 +713,11 @@ app.post("/webhook", async (req, res) => {
         }
 
         processedMessages.add(uniqueMessageId);
+      //if (phoneNumberId === "396791596844039") {
+             //   await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
+            //} else 
         try {
-            if (phoneNumberId === "396791596844039") {
-                await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
-            } else if (phoneNumberId === "553852214469319") {
+            if (phoneNumberId === "553852214469319") {
                 await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
             } else {
                 console.warn("Unknown phone number ID:", phoneNumberId);
