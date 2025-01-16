@@ -678,7 +678,7 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       served: false,
       accepted: false,
       vendor: vendorNumber,
-      deliveryAddress: "xx KG yy Ave",
+      //deliveryAddress: "xx KG yy Ave",
       deliveryLocation: {
         latitude: location.latitude,
         longitude: location.longitude,
