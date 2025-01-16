@@ -641,10 +641,12 @@ const handleLocation = async (location, phone, phoneNumberId) => {
     const currencies = enrichedItems[0].currency;
     let vendorNumber = "+250788767816"; // Default Rwanda
     let currentCurrency = "RWF";
+    let countryCodeText = "RW";
     
     if (currencies === "XOF") {
       vendorNumber = "+22892450808"; // Togo
       currentCurrency = "XOF";
+      let countryCodeText = "TG";
     }
 
     function orderNumber() {
@@ -663,6 +665,7 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       orderId: orderidd,
       phone: customerInfo.phone,
       currency: currentCurrency,
+      countryCode: countryCodeText,
       amount: enrichedItems.reduce(
         (total, item) => total + item.price * item.quantity,
         0
@@ -675,6 +678,7 @@ const handleLocation = async (location, phone, phoneNumberId) => {
       served: false,
       accepted: false,
       vendor: vendorNumber,
+      deliveryAddress: "xx KG yy Ave",
       deliveryLocation: {
         latitude: location.latitude,
         longitude: location.longitude,
